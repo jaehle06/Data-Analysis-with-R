@@ -1,13 +1,13 @@
 
 #킥스타터 데이터 분석 
 require(tidyverse)
-ksdata <- readr::read_csv("ks-projects-201801.csv")
+ksdata <- readr::read_csv("dataset/ks-projects-201801.csv")
 str(ksdata)
 head(ksdata)
 fillColor = "#FFA07A"
 fillColor2 = "#F1C40F"
 
-#가장 인기잇는 프로젝트 유형
+#가장 인기있는 프로젝트 유형
 # 카테고리와 하위 카테고리의 두가지 수준을 기준으로 함
 # 카테고리별 프로젝트 수
 library(dplyr)
@@ -28,6 +28,7 @@ table(is.na(ksdata$name))
 #usd pledged 에 대한 na값만 존재
 #usd_pledged_real 을 사용할 것이므로 이 열을 제거하고 usd_pleded_real의 이름을 usd_pledged로 변경
 #마찬가지로 use_goal_real을 사용하여 동일한 작업을 수행하고 usd_goal이라는 이름을 지정
+
 ksdata <- ksdata[,-13]
 names(ksdata)
 colnames(ksdata)[13] <- "usd_pledged"
@@ -218,7 +219,6 @@ ggplot(usd.amounts, aes(log(amount+1), fill=type)) +
 # 모금액은 목표 금액 분포보다 왼쪽에 위치하고 있으며, 많은 프로젝트가 필요한 자금을 조달받지 못했음을 보여주고 있다.
 
 
-
 #목표 달성률이 가장 높았던 프로젝트
 ksdata$ratio <- ksdata$usd_pledged/ksdata$usd_goal
 kable(head(ksdata[order(-ksdata$ratio), c(2,3,13,14,15)], 15))
@@ -316,7 +316,6 @@ ggplot(state.pct, aes(main_category, pct, fill=state)) + geom_bar(stat="identity
 # 일반적으로 모금액이 높고, 목표금액이 낮을 수록 성공할 확률이 높다. 
 # 흥미롭게도 낮은 목표액의 중간 값을 가진 ’Crafts’는 목표액의 중간값이 낮았음에도 불구하고 성공률이 낮았다.
 # 사람들이 전반적으로 이 카테고리에 관심이 많지 않다는 것을 알 수 있었다
-
 
 
 # 프로젝트 기간이 성공에 영향을 줄까?
@@ -577,29 +576,66 @@ summary(resultaov)
 
 # P값(유의확률)은 0.77로 유의수준인 0.05보다 높으므로 귀무가설을 채택할 수 있으며, 
 # 두 카테고리 모두 통계적으로 같은 금액의 평균값을 가진 1,000개의 프로젝트가 있다고 말할 수 있다.
-
-
-
-
 # 국가별 차이 시각화 
 countries.freq <- ksdata %>% 
   filter(country!='N,0"') %>% 
   group_by(country) %>% 
   summarize(count=n())
 
-
+library(rworldmap)
 countries.match <- joinCountryData2Map(countries.freq, joinCode="ISO2", nameJoinColumn="country")
 
 mapCountryData(countries.match, nameColumnToPlot="count", 
                mapTitle="Number of Projects by Country", catMethod="logFixedWidth", 
                colourPalette="heat")
 
+# 킥스타터 모금액과 펀딩에 참여한 사람 수간의 관계 
+# 킥스타터의 프로젝트는 펀딩에 참여한 사람들이 금전적으로 지원을 해주는 것이기 때문에 
+# 후원자의 수에 따라 프로젝트 성공 및 금액의 여부가 결정된다. 아래의 그림은 후원자의 수와 모금액의 선형관계를 보여주고 있다. 
+# 모금액과 후원자 수의 관계를 이해하기 위해 다음 모델을 사용하여 회귀 분석을 실시했다.
 
-
+library(lattice)
+#Pledgedamount=A0+B1∗backers
 xyplot(ksdata$pledged~ksdata$backers, data = ksdata, xlab= "Number of backers", ylab= "Amount pledged (USD)", panel = function(x, y, ...) {
   panel.xyplot(x, y, ...)
   panel.lmline(x, y, ...)
 })
+
+#선형회귀모델의 가정
+
+resultslm <- lm(ksdata$pledged~ksdata$backers, data = ksdata)
+summary(resultslm)
+#회귀 분석의 결과와 회귀 분석의 가정을 만족시키는 것을 보여주는 차트는 아래에 표시해두었다.
+par(mfrow=c(2,2))
+plot(resultslm)
+
+#후원자의 p값(유의확률)은 0.01 미만으로 이는 후원자의 수가 모금 총액에 상당한 
+#영향을 미친다는 것을 의미한다. 선형회귀 모델의 식은 아래와 같다.
+#후원자의 기울기는 75.6이므로 각 후원자가 킥스타터에 평균적으로 $ 75.6에 기여했다고 가정할 수 있다. 
+#따라서 더 많은 수의 후원자를 유치할 수 있는 프로젝트가 더 많은 돈을 모으게 됨으로써 성공적으로 진행될 것이다.
+#Pledgedamount=1698.9+75.6∗backers
+
+
+#prediction
+
+
+
+
+
+
+
+
+
+# 날짜를 활용하면 좋은 점은 : 기간에 확보할 수 있는 외부데이터 활용하면 좋음 -> 카테고리들에 대한 이 당시 사회적인식 같은거 그 때 핫한
+# 시기때는 더 지지 많고 이미지가 않좋다면 누가 지지하것어? , 뉴스 , SNS 이용해서 키워드가 감정분석을 통해서 새로운 변수 추가해도 될듯 
+# 네이버 랩 키워드에 대한 상승 하락 추세. 
+# 이 카테고리가지고 조언을 해줄 때 : 너가 지금 이카테고리이고 목표금액은 이렇고 이러면 목표 pledged, backeer 를 n 정도 확보해야하고
+# 근데 이 기간에 이건 하락 추세니까 좀 있다가 하는게 좋을 것이다. 
+# 마케팅 매체를 어떤 거 이용할 때 좋더라 이런것도 조언을 해주는거지
+# name : 에서도 성공과 실패 차이가 있을 지? -> 네이밍 할 때 의문문으로 하는게 좋을 지 같은 거 제시를 해줘도 좋음
+
+
+
 
 
 
