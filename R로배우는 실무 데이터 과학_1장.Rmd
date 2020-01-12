@@ -1,0 +1,82 @@
+---
+title: "R로 배우는 실무 데이터 과학 _1"
+author: "jaehyunLEE"
+date: "1/12/2020"
+output: html_document
+---
+
+## 모델링
+```{r}
+library(rpart)
+load('GCDData.RData')
+model <- rpart(Good.Loan ~ Duration.in.month + 
+                 Installment.rate.in.percentage.of.disposable.income + 
+                 Credit.amount + 
+                 Other.installment.plans, 
+                 data = d, 
+                 control=rpart.control(maxdepth = 4), 
+                 method = "class")
+plot(model);text(model)
+```
+## 혼동 행렬 정리 
+### 분류의 정확성을 요약하는 좋은 방버
+```{r}
+resultframe <- data.frame(Good.Loan = creditdata$Good.Loan,
+                          pred = predict(model, type = "class"))
+rtab <- table(resultframe)
+rtab
+```
+```{r}
+sum(diag(rtab)/sum(rtab))
+#diag : 대각 행렬 선택 함수
+```
+- 모델 전체의 정확성 : 73 %의 예측이 일치
+
+```{r}
+sum(rtab[1,1]) / sum(rtab[,1])
+```
+- 모델 정밀도 : 실제로 채무불이행 계좌에 대해 bad로 76% 예측
+
+```{r}
+sum(rtab[1,1]) / sum(rtab[1,])
+```
+- 모델 재현율 : 모델은 채무 불이행된 계좌를 14% 찾아냄
+
+```{r}
+sum(rtab[2,1]) / sum(rtab[2,])
+```
+- 오검출률 : 신용이 좋은 채무자 중 2%를 악성 채무자로 잘못 검출함 
+
+```{r}
+rtab[2,1]
+```
+
+
+## 기대치 설정
+### 모델 성능 상하한선 결정
+- Null 모델 : 성능의 하한선
+- BAYES Rate(베이스율) : 모델 성능의 상한선
+```{r}
+tab1
+```
+
+```{r}
+sum(diag(tab1)) / sum(tab1)
+```
+- 모델의 정확도 : 94%
+- 첫 번째 모집단, 가처분 소득 대비 15% 이하로 된 대출은 모두 양호
+- 15% 이상으로 된 대출은 6개 모두 채무 불이행
+- 모델 성능 우수
+
+```{r}
+tab2
+```
+
+
+```{r}
+sum(diag(tab2)) / sum(tab2)
+```
+- 정확도 66%
+- 두번째 모집단에서 1/3의 대출은 가처분 소득이 15%이하인데 채무 불이행
+- 15% 이상으로 대출된 것 중 절반 이상이 양성 대출
+- 이 모집단의 경우에는 결과를 잘 설명할 수 없음
